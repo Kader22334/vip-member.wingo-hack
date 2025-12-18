@@ -1,0 +1,171 @@
+<meta name='viewport' content='width=device-width, initial-scale=1'/><meta name='viewport' content='width=device-width, initial-scale=1'/><meta name='viewport' content='width=device-width, initial-scale=1'/>
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>User Panel — Realtime Key Protection</title>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet">
+<style>
+body { font-family:'Poppins',sans-serif; background:#071226; color:#eaf6ff; margin:0; padding:0; }
+.wrap{ max-width:520px; margin:50px auto 20px; text-align:center; }
+#menuBtn { position:fixed; top:20px; left:20px; font-size:24px; background:#38bdf8; padding:8px 10px; border-radius:10px; cursor:pointer; box-shadow:0 4px 8px rgba(0,0,0,0.4); z-index:1000; transition:all 0.3s; }
+#menuBtn:hover{ transform:scale(1.1); box-shadow:0 6px 12px rgba(0,0,0,0.5); }
+#menuBox { position:fixed; top:55px; left:20px; width:160px; background:#0b2a45; border-radius:10px; padding:10px; box-shadow:0 6px 14px rgba(0,0,0,0.5); display:none; z-index:999; font-size:13px; }
+#menuBox img{ width:60px; display:block; margin:0 auto 8px; border-radius:8px; }
+.menuLink{ display:block; background:linear-gradient(135deg,#38bdf8,#2563eb); color:white; text-decoration:none; text-align:center; padding:6px; margin:5px 0; border-radius:8px; font-weight:600; transition:all 0.3s; }
+.menuLink:hover{ transform:scale(1.05); box-shadow:0 3px 8px rgba(0,0,0,0.4); }
+.card{ background:#072036; padding:14px; border-radius:10px; margin-bottom:12px; box-shadow:0 8px 22px rgba(0,0,0,0.5); }
+input,button{ padding:10px; border-radius:8px; border:0; margin:8px 0; width:100%; box-sizing:border-box; }
+input{ background:#0b2a45; color:#fff; }
+button{ background:#00c2ff; color:#001; font-weight:700; cursor:pointer; }
+.info{ display:flex; justify-content:space-between; padding:8px; background:#061428; border-radius:8px; color:#cfefff; }
+.muted{ font-size:13px;color:#9fb8cf; }
+</style>
+</head>
+<body>
+
+<div id="menuBtn">[📧]</div>
+<div id="menuBox">
+  <img src="https://i.supaimg.com/0befa4a3-a05c-4629-89a0-1b923e64f402.jpg" alt="Logo">
+  <a class="menuLink" href="https://t.me/abdulkader0190" target="_blank">Contact Admin</a>
+  <a class="menuLink" href="https://t.me/+cfCc4XZQa404ZGFl" target="_blank">Join Telegram Group</a>
+  <a class="menuLink" href="https://t.me/kader_BDT_game" target="_blank">Join Telegram Channel</a>
+</div>
+
+<div class="wrap">
+  <h2>🔐 Vip Member </h2>
+  <div id="loginBox" class="card">
+    <h3>নিচে admin key বসিয়ে unlock করো</h3>
+    <input id="userName" placeholder="Your name(তোমার নাম )">
+    <input id="userKey" placeholder="Enter key (এখানে তোমার admin বা payment key বসাই)">
+    <button onclick="unlockWithKey()">Unlock with Key</button>
+    <p class="muted">অথবা নীচের পেমেন্ট পৃষ্ঠার মাধ্যমে একটি কী কিনুন.</p>
+    <div style="margin-top:10px">
+      <a href="https://kader22334.github.io/Wingo-/" target="_blank"><button>Buy Key / Payment Page</button></a>
+    </div>
+    <p id="loginMsg" class="muted"></p>
+  </div>
+
+  <div id="panelBox" class="card" style="display:none">
+    <h3 id="welcome">Welcome</h3>
+    <div class="info">
+      <div>Coins: <strong id="coins">0</strong></div>
+      <div>Expires: <strong id="expires">—</strong></div>
+    </div>
+    <div style="margin-top:8px">
+      <button id="goHackBtn" onclick="goToPrediction()">View Prediction (open hack)</button>
+      <button onclick="logout()" style="background:#ff6b6b;color:#fff;margin-top:8px">Logout</button>
+    </div>
+    <div style="margin-top:12px">
+      <h4>Last Viewed</h4>
+      <div id="lastViewed">—</div>
+    </div>
+  </div>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
+<script>
+const firebaseConfig = {
+  apiKey: "AIzaSyDIeVHjyTKIyBfaFxPG8iK7S9SuRgjFbFk",
+  authDomain: "fir-dcce6.firebaseapp.com",
+  databaseURL: "https://fir-dcce6-default-rtdb.firebaseio.com",
+  projectId: "fir-dcce6",
+  storageBucket: "fir-dcce6.appspot.com",
+  messagingSenderId: "981371148475",
+  appId: "1:981371148475:web:de08536e57efb6c53fb19e",
+  measurementId: "G-PN4Z29V5SB"
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
+</script>
+
+<script>
+const DEFAULT_COINS = 100;
+const DEFAULT_VALIDITY_DAYS = 30;
+const msInDay = 24*60*60*1000;
+let uid = null;
+let userListener = null;
+
+/* Menu toggle */
+document.getElementById('menuBtn').onclick = function(){
+  const box = document.getElementById('menuBox');
+  box.style.display = (box.style.display==='block')?'none':'block';
+}
+
+/* Unlock with key */
+function unlockWithKey(){
+  const name = document.getElementById('userName').value.trim();
+  const key = document.getElementById('userKey').value.trim();
+  const msg = document.getElementById('loginMsg');
+  msg.innerText = '';
+  if(!name){ msg.innerText='নাম দাও'; return;}
+  if(!key){ msg.innerText='কী না থাকলে ক্রয় পেজ এ গিয়ে পেমেন্ট করো (new window)।'; return; }
+
+  db.ref('keys/'+key).once('value').then(s=>{
+    if(!s.exists()){ msg.innerText='Key পাওয়া যায়নি বা ডিলিট করা হয়েছে'; return; }
+    const kd = s.val();
+    const now = Date.now();
+    if(kd.used){ msg.innerText='এই কী ইতিমধ্যে ব্যবহার করা হয়েছে'; return; }
+
+    const expiresAt = kd.validityDays ? now + kd.validityDays*msInDay : now + DEFAULT_VALIDITY_DAYS*msInDay;
+    const uref = db.ref('users').push();
+    const payload = { name:name, keyUsed:key, coins: kd.coins||DEFAULT_COINS, createdAt:now, lastSeen:now, expiresAt:expiresAt };
+    uref.set(payload).then(()=>{
+      uid = uref.key;
+      localStorage.setItem('uid', uid);
+      db.ref('keys/'+key+'/used').set(true);
+      openPanelFor(uid);
+    });
+  });
+}
+
+/* Open panel with realtime check */
+function openPanelFor(userId){
+  if(userListener) userListener.off();
+  const ref = db.ref('users/'+userId);
+  userListener = ref.on('value', s=>{
+    if(!s.exists()){ logout(); return; }
+    const u = s.val();
+
+    const now = Date.now();
+    let daysLeft = Math.floor((u.expiresAt - now) / msInDay);
+
+    if(daysLeft <= 0){
+      document.getElementById('expires').innerText = "Expired";
+      document.getElementById("goHackBtn").style.display = "none";
+    } else {
+      document.getElementById('expires').innerText = daysLeft + " Days Left";
+      document.getElementById("goHackBtn").style.display = "block";
+    }
+
+    document.getElementById('loginBox').style.display='none';
+    document.getElementById('panelBox').style.display='block';
+    document.getElementById('welcome').innerText='Welcome, '+(u.name||'');
+    document.getElementById('coins').innerText = u.coins || 0;
+  });
+}
+
+/* Redirect prediction */
+function goToPrediction(){
+  if(!uid){ alert('প্রথমে লগইন করো'); return; }
+  window.location.href="https://kader22334.github.io/Vip.page/";
+}
+
+/* Restore session */
+window.onload=function(){
+  const stored = localStorage.getItem('uid');
+  if(stored){ uid=stored; openPanelFor(uid); }
+}
+
+/* logout */
+function logout(){
+  if(userListener) userListener.off(); 
+  if(uid) db.ref('users/'+uid+'/lastSeen').set(Date.now());
+  localStorage.removeItem('uid');
+  location.reload();
+}
+</script>
+</body>
+</html>
